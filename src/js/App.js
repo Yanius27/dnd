@@ -1,6 +1,6 @@
 import Container from './components/Container';
 import Card from './components/Card';
-import Popover from './components/PopOver';
+import Popover from './components/Popover';
 
 export default class App {
   constructor() {
