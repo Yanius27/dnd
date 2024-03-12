@@ -15,6 +15,7 @@ export default class App {
     this.popover = new Popover();
     this.#drawElements();
     this.actualElement;
+    this.cloneElement;
     this.shiftX;
     this.shiftY;
     // this.cursorBorder;
@@ -112,46 +113,38 @@ export default class App {
     this.actualElement.style.display = 'none';
 
     // this.cursorBorder.style.display = 'none';
-    document.body.style.cursor = 'default';
 
     const mouseUpItem = document.elementFromPoint(e.clientX, e.clientY);
 
     this.actualElement.style.display = 'flex';
-
-    if (!mouseUpItem || mouseUpItem === document.querySelector('html')) {
-      this.actualElement.classList.remove('dragged');
-      this.actualElement.remove();
-
-      this.actualElement = undefined;
-      document.body.style.cursor = 'default';
-
-      this.#clearTasks();
-      this.#drawCards();
-
-      document.documentElement.removeEventListener('mouseup', this.#onMouseUp);
-      document.documentElement.removeEventListener('mousemove', this.#onMouseMove);
-
-      return;
-    }
-    if (mouseUpItem.classList.contains('card')) {
-      for (let col in this.cards) {
-        this.cards[col] = this.cards[col].filter((el) => el.id !== this.actualElement.id);
+    
+    if (mouseUpItem) {
+      if (mouseUpItem.classList.contains('card') && mouseUpItem.id === this.actualElement.id) {
+        mouseUpItem.parentNode.insertBefore(this.actualElement, mouseUpItem);
+      } else if (mouseUpItem.classList.contains('card') && mouseUpItem.id !== this.actualElement.id) {
+        for (let col in this.cards) {
+          this.cards[col] = this.cards[col].filter((el) => el.id !== this.actualElement.id);
+        }
+        const columnName = mouseUpItem.parentNode.parentNode.className.split(' ')[1];
+        const cardsNodes = Array.from(mouseUpItem.parentNode.children);
+        this.cards[columnName].splice(cardsNodes.indexOf(mouseUpItem), 0, { task: this.actualElement.textContent, id: this.actualElement.id });
+      } else if (mouseUpItem.classList.contains('column_tasks')) {
+        for (let col in this.cards) {
+          this.cards[col] = this.cards[col].filter((el) => el.id !== this.actualElement.id);
+        }
+        const columnName = mouseUpItem.parentNode.className.split(' ')[1];
+        this.cards[columnName].push({ task: this.actualElement.textContent, id: this.actualElement.id });
       }
-      const columnName = mouseUpItem.parentNode.parentNode.className.split(' ')[1];
-      const cardsNodes = Array.from(mouseUpItem.parentNode.children);
-      this.cards[columnName].splice(cardsNodes.indexOf(mouseUpItem), 0, { task: this.actualElement.textContent, id: this.actualElement.id })
-    } else if (mouseUpItem.classList.contains('column_tasks')) {
-      for (let col in this.cards) {
-        this.cards[col] = this.cards[col].filter((el) => el.id !== this.actualElement.id);
-      }
-      const columnName = mouseUpItem.parentNode.className.split(' ')[1];
-      this.cards[columnName].push({ task: this.actualElement.textContent, id: this.actualElement.id });
     }
 
-    this.actualElement.classList.remove('dragged');
+    this.cloneElement = undefined;
+
     this.actualElement.remove();
-
+    this.actualElement.classList.remove('dragged');
     this.actualElement = undefined;
+
+    const draggedElems = document.querySelectorAll('.dragged');
+    [...draggedElems].forEach(el => el.remove());
 
     this.#setStorage();
     this.#clearTasks();
@@ -159,6 +152,8 @@ export default class App {
 
     document.documentElement.removeEventListener('mouseup', this.#onMouseUp);
     document.documentElement.removeEventListener('mousemove', this.#onMouseMove);
+
+    document.body.style.cursor = 'default';
   }
 
   
@@ -198,6 +193,11 @@ export default class App {
         
         if (e.target.classList.contains('card')) {
           this.actualElement = e.target;
+
+          this.cloneElement = e.target.cloneNode(true);
+          this.cloneElement.style.opacity = '0';
+
+          this.actualElement.parentNode.insertBefore(this.cloneElement, this.actualElement.nextSibling);
 
           this.shiftX = e.pageX - this.actualElement.getBoundingClientRect().left;
           this.shiftY = e.pageY - this.actualElement.getBoundingClientRect().top;
