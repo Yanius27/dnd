@@ -12,10 +12,10 @@ export default class App {
     },
     this.columns = Object.keys(this.cards);
     this.container = new Container();
+    document.body.appendChild(this.container.element);
     this.popover = new Popover();
-    this.#drawElements();
+    this.#drawCards();
     this.actualElement;
-    this.cloneElement;
     this.shiftX;
     this.shiftY;
     // this.cursorBorder;
@@ -33,31 +33,25 @@ export default class App {
     return JSON.parse(this.storage.getItem('cards'));
   }
 
-// Отрисовываем все элементы на странице
-  #drawElements() {
-    document.body.appendChild(this.container.element);
+// Отрисовываем на странице добавленные карты
+  #drawCards() { 
     if (this.#getStorage()) {
       this.cards = this.#getStorage();
       this.#clearTasks();
-      this.#drawCards();
-    }
-  }
 
-// Отрисовываем на странице добавленные карты
-  #drawCards() { 
-    for (let col in this.cards) {
-      this.cards[col].forEach((el) => {
-        const card = new Card(el.task, el.id).element;
-        document.querySelector(`.${col}`).querySelector('.column_tasks').appendChild(card);
-      });
+      for (let col in this.cards) {
+        this.cards[col].forEach((el) => {
+          const card = new Card(el.task, el.id).element;
+          document.querySelector(`.${col}`).querySelector('.column_tasks').appendChild(card);
+        });
+      }
     }
-
     this.#cardsListener();
   }
 
   #clearTasks() {
-    const columns = document.querySelectorAll('.column_tasks');
-    [...columns].forEach(el => el.innerHTML = '');
+    const column = document.querySelectorAll('.column_tasks');
+    [...column].forEach(el => el.innerHTML = '');
   }
 
 // Коллбэк для обработчика события добавления новой карты 
@@ -74,7 +68,6 @@ export default class App {
         }
       });
       this.#setStorage();
-      this.#clearTasks();
       this.#drawCards();
     }  
     this.popover.element.querySelector('.titleInput').value = '';
@@ -119,9 +112,7 @@ export default class App {
     this.actualElement.style.display = 'flex';
     
     if (mouseUpItem) {
-      if (mouseUpItem.classList.contains('card') && mouseUpItem.id === this.actualElement.id) {
-        mouseUpItem.parentNode.insertBefore(this.actualElement, mouseUpItem);
-      } else if (mouseUpItem.classList.contains('card') && mouseUpItem.id !== this.actualElement.id) {
+      if (mouseUpItem.classList.contains('card') && !mouseUpItem.classList.contains('placeholder')) {
         for (let col in this.cards) {
           this.cards[col] = this.cards[col].filter((el) => el.id !== this.actualElement.id);
         }
@@ -137,17 +128,13 @@ export default class App {
       }
     }
 
-    this.cloneElement = undefined;
+    document.body.querySelector('.placeholder').remove();
+
 
     this.actualElement.remove();
-    this.actualElement.classList.remove('dragged');
     this.actualElement = undefined;
 
-    const draggedElems = document.querySelectorAll('.dragged');
-    [...draggedElems].forEach(el => el.remove());
-
     this.#setStorage();
-    this.#clearTasks();
     this.#drawCards();
 
     document.documentElement.removeEventListener('mouseup', this.#onMouseUp);
@@ -177,7 +164,6 @@ export default class App {
             this.cards[col] = this.cards[col].filter((el) => el.id !== removeCard.id);
           }
           this.#setStorage();
-          this.#clearTasks();
           this.#drawCards();
         }
       });
@@ -191,20 +177,22 @@ export default class App {
         // const cursorBorders = document.body.querySelectorAll('.cursorBorder');
         // [...cursorBorders].forEach(e => e.remove());
         
-        if (e.target.classList.contains('card')) {
+        if (e.target.classList.contains('card') && e.target.parentNode.classList.contains('column_tasks')) {
           this.actualElement = e.target;
 
-          this.cloneElement = e.target.cloneNode(true);
-          this.cloneElement.style.opacity = '0';
+          const placeHolder = document.createElement('div');
+          placeHolder.classList.add('placeholder');
+          placeHolder.textContent = this.actualElement.textContent;
 
-          this.actualElement.parentNode.insertBefore(this.cloneElement, this.actualElement.nextSibling);
+          this.actualElement.parentNode.insertBefore(placeHolder, this.actualElement.nextSibling);
 
           this.shiftX = e.pageX - this.actualElement.getBoundingClientRect().left;
           this.shiftY = e.pageY - this.actualElement.getBoundingClientRect().top;
+
           document.body.appendChild(this.actualElement);
+          this.actualElement.classList.add('dragged');
           this.actualElement.style.left = e.pageX - this.shiftX + 'px'; 
           this.actualElement.style.top = e.pageY - this.shiftY + 'px';
-          this.actualElement.classList.add('dragged');
 
           document.body.style.cursor = 'grabbing';
 
